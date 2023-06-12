@@ -1,65 +1,70 @@
-# Arrays Lab
+<p align="center">
+  <img src="https://cldup.com/xFVFxOioAU.svg" alt="Mocha test framework"/>
+</p>
 
-## Learning Goals
+<p align="center">☕️ Simple, flexible, fun JavaScript test framework for Node.js & The Browser ☕️</p>
 
-- Practice writing arrays
-- Practice using _destructive_ methods to manipulate arrays
-- Practice using _nondestructive_ methods to manipulate arrays
+<p align="center">
+<a href="https://github.com/mochajs/mocha/actions?query=workflow%3ATests+branch%3Amaster"><img src="https://github.com/mochajs/mocha/workflows/Tests/badge.svg?branch=master" alt="GitHub Actions Build Status"></a>
+<a href="https://coveralls.io/github/mochajs/mocha"><img src="https://coveralls.io/repos/github/mochajs/mocha/badge.svg" alt="Coverage Status"></a>
+<a href="https://app.fossa.io/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fmochajs%2Fmocha?ref=badge_shield"><img src="https://app.fossa.io/api/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fmochajs%2Fmocha.svg?type=shield" alt="FOSSA Status"></a>
+<a href="https://gitter.im/mochajs/mocha?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge"><img src="https://badges.gitter.im/Join%20Chat.svg" alt="Gitter"></a>
+<a href="https://github.com/mochajs/mocha#sponsors"><img src="https://opencollective.com/mochajs/tiers/sponsors/badge.svg" alt="OpenCollective"></a>
+<a href="https://github.com/mochajs/mocha#backers"><img src="https://opencollective.com/mochajs/tiers/backers/badge.svg" alt="OpenCollective"></a>
+</p>
 
-## Introduction
+<p align="center">
+<a href="https://www.npmjs.com/package/mocha"><img src="https://img.shields.io/npm/v/mocha.svg" alt="NPM Version"></a>
+<a href="https://github.com/mochajs/mocha"><img src="https://img.shields.io/node/v/mocha.svg" alt="Node Version"></a>
+</p>
 
-We've learned about how arrays work and about the array methods built in to
-JavaScript that we can use to manipulate them. Now it's time to practice what
-we've learned.
+<p align="center"><br><img alt="Mocha Browser Support h/t SauceLabs" src="https://saucelabs.com/browser-matrix/mochajs.svg" width="354"></p>
 
-If you haven't already, **fork and clone** this lab into your local environment.
-Navigate into its directory in the terminal, then run `code .` to open the files
-in Visual Studio Code.
+## Links
 
-## Instructions
+- **[Documentation](https://mochajs.org/)**
+- **[Release Notes / History / Changes](https://github.com/mochajs/mocha/blob/master/CHANGELOG.md)**
+- [Code of Conduct](https://github.com/mochajs/mocha/blob/master/.github/CODE_OF_CONDUCT.md)
+- [Contributing](https://github.com/mochajs/mocha/blob/master/.github/CONTRIBUTING.md)
+- [Gitter Chatroom](https://gitter.im/mochajs/mocha) (ask questions here!)
+- [Issue Tracker](https://github.com/mochajs/mocha/issues)
 
-Open up the `test` folder and take a look at `indexTest.js`. Note that some of
-the names of the functions you will be writing begin with `destructively` and
-some don't. This is a clue as to which `Array` method you will need to use for
-each function.
+## Backers
 
-Note also that the first test asks for an array called `cats`, set to an
-initial value of `["Milo", "Otis", "Garfield"]`. In your functions, you will be
-accessing and manipulating this array.
+[Become a backer](https://opencollective.com/mochajs) and show your support to our open source project on [our site](https://mochajs.org/#backers).
 
-Near the top of `indexTest.js` you will see the following:
+<a href="https://opencollective.com/mochajs"><img src="https://opencollective.com/mochajs/tiers/backers.svg?limit=30&button=false&avatarHeight=46&width=750"></a>
 
-```js
-beforeEach(function () {
-  cats.length = 0;
+## Sponsors
 
-  cats.push("Milo", "Otis", "Garfield");
-});
-```
+Does your company use Mocha? Ask your manager or marketing team if your company would be interested in supporting our project. Support will allow the maintainers to dedicate more time for maintenance and new features for everyone. Also, your company's logo will show [on GitHub](https://github.com/mochajs/mocha#readme) and on [our site](https://mochajs.org#sponsors) - who doesn't want a little extra exposure? [Here's the info](https://opencollective.com/mochajs).
 
-What this code does is _reset_ the array to its original contents before each
-test is run. The reason we need to do this is because some of your functions
-will be _destructive_ — they will change the original `cats` array. This
-is a problem because it means the input to the remaining functions will be
-dependent on the outcome of other functions. It also means that the expected
-return value of a function might change if the tests are run in a different
-order. This makes it more difficult both to write tests in the first place and
-to figure out how to get the tests to pass. Resetting the array returns us to a
-blank slate between tests.
+[![MochaJS Sponsor](https://opencollective.com/mochajs/tiers/sponsors/0/avatar)](https://opencollective.com/mochajs/tiers/sponsors/0/website)
+[![MochaJS Sponsor](https://opencollective.com/mochajs/tiers/sponsors/1/avatar)](https://opencollective.com/mochajs/tiers/sponsors/1/website)
+[![MochaJS Sponsor](https://opencollective.com/mochajs/tiers/sponsors/2/avatar)](https://opencollective.com/mochajs/tiers/sponsors/2/website)
+[![MochaJS Sponsor](https://opencollective.com/mochajs/tiers/sponsors/3/avatar)](https://opencollective.com/mochajs/tiers/sponsors/3/website)
 
-This is also a good illustration of why it's generally good practice to avoid
-mutating a program's state whenever possible. If we use only _nondestructive_
-methods, we have complete control over what's going into and coming out of the
-function. This makes our programs more robust, easier to maintain, and less
-prone to bugs.
+## Development
 
-Remember the workflow:
+You might want to know that:
 
-1. Install the dependencies using `npm install`.
-2. Run the tests using `npm test`.
-3. Read the errors; vocalize what they're asking you to do.
-4. Write code; repeat steps 2 and 3 often until a test passes.
-5. Repeat as needed for the remaining tests.
+- Mocha is one of the _most-depended-upon_ modules on npm (source: [libraries.io](https://libraries.io/search?order=desc&platforms=NPM&sort=dependents_count)), and
+- Mocha is an _independent_ open-source project, maintained exclusively by volunteers.
 
-After you have all the tests passing, remember to commit and push your changes
-up to GitHub, then submit your work to Canvas using CodeGrade.
+You might want to help:
+
+- New to contributing to Mocha? Check out this list of [good first issues](https://github.com/mochajs/mocha/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue)
+- Mocha could use a hand with [these issues](https://github.com/mochajs/mocha/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+- The [maintainer's handbook](https://github.com/mochajs/mocha/blob/master/MAINTAINERS.md) explains how things get done
+
+Finally, come [chat with the maintainers](https://gitter.im/mochajs/contributors) on Gitter if you want to help with:
+
+- Triaging issues, answering questions
+- Review, merging, and closing pull requests
+- Other project-maintenance-y things
+
+## License
+
+Copyright 2011-2022 OpenJS Foundation and contributors. Licensed [MIT](https://github.com/mochajs/mocha/blob/master/LICENSE).
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fmochajs%2Fmocha.svg?type=large)](https://app.fossa.io/projects/git%2Bhttps%3A%2F%2Fgithub.com%2Fmochajs%2Fmocha?ref=badge_large)
