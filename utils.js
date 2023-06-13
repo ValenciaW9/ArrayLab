@@ -1,152 +1,190 @@
 "use strict";
-const path = require("path");
-const whatwgURL = require("whatwg-url");
-const { domSymbolTree } = require("./living/helpers/internal-constants");
-const SYMBOL_TREE_POSITION = require("symbol-tree").TreePosition;
 
-exports.toFileUrl = function (fileName) {
-  // Beyond just the `path.resolve`, this is mostly for the benefit of Windows,
-  // where we need to convert "\" to "/" and add an extra "/" prefix before the
-  // drive letter.
-  let pathname = path.resolve(process.cwd(), fileName).replace(/\\/g, "/");
-  if (pathname[0] !== "/") {
-    pathname = "/" + pathname;
-  }
-
-  // path might contain spaces, so convert those to %20
-  return "file://" + encodeURI(pathname);
-};
-
-/**
- * Define a set of properties on an object, by copying the property descriptors
- * from the original object.
- *
- * - `object` {Object} the target object
- * - `properties` {Object} the source from which to copy property descriptors
- */
-exports.define = function define(object, properties) {
-  for (const name of Object.getOwnPropertyNames(properties)) {
-    const propDesc = Object.getOwnPropertyDescriptor(properties, name);
-    Object.defineProperty(object, name, propDesc);
-  }
-};
-
-/**
- * Define a list of constants on a constructor and its .prototype
- *
- * - `Constructor` {Function} the constructor to define the constants on
- * - `propertyMap` {Object}  key/value map of properties to define
- */
-exports.addConstants = function addConstants(Constructor, propertyMap) {
-  for (const property in propertyMap) {
-    const value = propertyMap[property];
-    addConstant(Constructor, property, value);
-    addConstant(Constructor.prototype, property, value);
-  }
-};
-
-function addConstant(object, property, value) {
-  Object.defineProperty(object, property, {
-    configurable: false,
-    enumerable: true,
-    writable: false,
-    value
-  });
+// Returns "Type(value) is Object" in ES terminology.
+function isObject(value) {
+  return (typeof value === "object" && value !== null) || typeof value === "function";
 }
 
-exports.mixin = (target, source) => {
-  const keys = Reflect.ownKeys(source);
-  for (let i = 0; i < keys.length; ++i) {
-    if (keys[i] in target) {
-      continue;
-    }
+const hasOwn = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
 
-    Object.defineProperty(target, keys[i], Object.getOwnPropertyDescriptor(source, keys[i]));
+// Like `Object.assign`, but using `[[GetOwnProperty]]` and `[[DefineOwnProperty]]`
+// instead of `[[Get]]` and `[[Set]]` and only allowing objects
+function define(target, source) {
+  for (const key of Reflect.ownKeys(source)) {
+    const descriptor = Reflect.getOwnPropertyDescriptor(source, key);
+    if (descriptor && !Reflect.defineProperty(target, key, descriptor)) {
+      throw new TypeError(`Cannot redefine property: ${String(key)}`);
+    }
   }
-};
-
-let memoizeQueryTypeCounter = 0;
-
-/**
- * Returns a version of a method that memoizes specific types of calls on the object
- *
- * - `fn` {Function} the method to be memozied
- */
-exports.memoizeQuery = function memoizeQuery(fn) {
-  // Only memoize query functions with arity <= 2
-  if (fn.length > 2) {
-    return fn;
-  }
-
-  const type = memoizeQueryTypeCounter++;
-
-  return function (...args) {
-    if (!this._memoizedQueries) {
-      return fn.apply(this, args);
-    }
-
-    if (!this._memoizedQueries[type]) {
-      this._memoizedQueries[type] = Object.create(null);
-    }
-
-    let key;
-    if (args.length === 1 && typeof args[0] === "string") {
-      key = args[0];
-    } else if (args.length === 2 && typeof args[0] === "string" && typeof args[1] === "string") {
-      key = args[0] + "::" + args[1];
-    } else {
-      return fn.apply(this, args);
-    }
-
-    if (!(key in this._memoizedQueries[type])) {
-      this._memoizedQueries[type][key] = fn.apply(this, args);
-    }
-    return this._memoizedQueries[type][key];
-  };
-};
-
-function isValidAbsoluteURL(str) {
-  return whatwgURL.parseURL(str) !== null;
 }
 
-exports.isValidTargetOrigin = function (str) {
-  return str === "*" || str === "/" || isValidAbsoluteURL(str);
-};
-
-exports.simultaneousIterators = function* (first, second) {
-  for (;;) {
-    const firstResult = first.next();
-    const secondResult = second.next();
-
-    if (firstResult.done && secondResult.done) {
-      return;
-    }
-
-    yield [
-      firstResult.done ? null : firstResult.value,
-      secondResult.done ? null : secondResult.value
-    ];
-  }
-};
-
-exports.treeOrderSorter = function (a, b) {
-  const compare = domSymbolTree.compareTreePosition(a, b);
-
-  if (compare & SYMBOL_TREE_POSITION.PRECEDING) { // b is preceding a
-    return 1;
-  }
-
-  if (compare & SYMBOL_TREE_POSITION.FOLLOWING) {
-    return -1;
-  }
-
-  // disconnected or equal:
-  return 0;
-};
-
-/* eslint-disable global-require */
-try {
-  exports.Canvas = require("canvas");
-} catch {
-  exports.Canvas = null;
+function newObjectInRealm(globalObject, object) {
+  const ctorRegistry = initCtorRegistry(globalObject);
+  return Object.defineProperties(
+    Object.create(ctorRegistry["%Object.prototype%"]),
+    Object.getOwnPropertyDescriptors(object)
+  );
 }
+
+const wrapperSymbol = Symbol("wrapper");
+const implSymbol = Symbol("impl");
+const sameObjectCaches = Symbol("SameObject caches");
+const ctorRegistrySymbol = Symbol.for("[webidl2js] constructor registry");
+
+const AsyncIteratorPrototype = Object.getPrototypeOf(Object.getPrototypeOf(async function* () {}).prototype);
+
+function initCtorRegistry(globalObject) {
+  if (hasOwn(globalObject, ctorRegistrySymbol)) {
+    return globalObject[ctorRegistrySymbol];
+  }
+
+  const ctorRegistry = Object.create(null);
+
+  // In addition to registering all the WebIDL2JS-generated types in the constructor registry,
+  // we also register a few intrinsics that we make use of in generated code, since they are not
+  // easy to grab from the globalObject variable.
+  ctorRegistry["%Object.prototype%"] = globalObject.Object.prototype;
+  ctorRegistry["%IteratorPrototype%"] = Object.getPrototypeOf(
+    Object.getPrototypeOf(new globalObject.Array()[Symbol.iterator]())
+  );
+
+  try {
+    ctorRegistry["%AsyncIteratorPrototype%"] = Object.getPrototypeOf(
+      Object.getPrototypeOf(
+        globalObject.eval("(async function* () {})").prototype
+      )
+    );
+  } catch {
+    ctorRegistry["%AsyncIteratorPrototype%"] = AsyncIteratorPrototype;
+  }
+
+  globalObject[ctorRegistrySymbol] = ctorRegistry;
+  return ctorRegistry;
+}
+
+function getSameObject(wrapper, prop, creator) {
+  if (!wrapper[sameObjectCaches]) {
+    wrapper[sameObjectCaches] = Object.create(null);
+  }
+
+  if (prop in wrapper[sameObjectCaches]) {
+    return wrapper[sameObjectCaches][prop];
+  }
+
+  wrapper[sameObjectCaches][prop] = creator();
+  return wrapper[sameObjectCaches][prop];
+}
+
+function wrapperForImpl(impl) {
+  return impl ? impl[wrapperSymbol] : null;
+}
+
+function implForWrapper(wrapper) {
+  return wrapper ? wrapper[implSymbol] : null;
+}
+
+function tryWrapperForImpl(impl) {
+  const wrapper = wrapperForImpl(impl);
+  return wrapper ? wrapper : impl;
+}
+
+function tryImplForWrapper(wrapper) {
+  const impl = implForWrapper(wrapper);
+  return impl ? impl : wrapper;
+}
+
+const iterInternalSymbol = Symbol("internal");
+
+function isArrayIndexPropName(P) {
+  if (typeof P !== "string") {
+    return false;
+  }
+  const i = P >>> 0;
+  if (i === 2 ** 32 - 1) {
+    return false;
+  }
+  const s = `${i}`;
+  if (P !== s) {
+    return false;
+  }
+  return true;
+}
+
+const byteLengthGetter =
+    Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, "byteLength").get;
+function isArrayBuffer(value) {
+  try {
+    byteLengthGetter.call(value);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function iteratorResult([key, value], kind) {
+  let result;
+  switch (kind) {
+    case "key":
+      result = key;
+      break;
+    case "value":
+      result = value;
+      break;
+    case "key+value":
+      result = [key, value];
+      break;
+  }
+  return { value: result, done: false };
+}
+
+const supportsPropertyIndex = Symbol("supports property index");
+const supportedPropertyIndices = Symbol("supported property indices");
+const supportsPropertyName = Symbol("supports property name");
+const supportedPropertyNames = Symbol("supported property names");
+const indexedGet = Symbol("indexed property get");
+const indexedSetNew = Symbol("indexed property set new");
+const indexedSetExisting = Symbol("indexed property set existing");
+const namedGet = Symbol("named property get");
+const namedSetNew = Symbol("named property set new");
+const namedSetExisting = Symbol("named property set existing");
+const namedDelete = Symbol("named property delete");
+
+const asyncIteratorNext = Symbol("async iterator get the next iteration result");
+const asyncIteratorReturn = Symbol("async iterator return steps");
+const asyncIteratorInit = Symbol("async iterator initialization steps");
+const asyncIteratorEOI = Symbol("async iterator end of iteration");
+
+module.exports = exports = {
+  isObject,
+  hasOwn,
+  define,
+  newObjectInRealm,
+  wrapperSymbol,
+  implSymbol,
+  getSameObject,
+  ctorRegistrySymbol,
+  initCtorRegistry,
+  wrapperForImpl,
+  implForWrapper,
+  tryWrapperForImpl,
+  tryImplForWrapper,
+  iterInternalSymbol,
+  isArrayBuffer,
+  isArrayIndexPropName,
+  supportsPropertyIndex,
+  supportedPropertyIndices,
+  supportsPropertyName,
+  supportedPropertyNames,
+  indexedGet,
+  indexedSetNew,
+  indexedSetExisting,
+  namedGet,
+  namedSetNew,
+  namedSetExisting,
+  namedDelete,
+  asyncIteratorNext,
+  asyncIteratorReturn,
+  asyncIteratorInit,
+  asyncIteratorEOI,
+  iteratorResult
+};
